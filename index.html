@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather App</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body{
+      height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      background: linear-gradient(135deg,#1d2671,#c33764);
+      overflow:hidden;
+    }
+
+    .weather-card{
+      width:350px;
+      padding:30px;
+      border-radius:25px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);
+      text-align:center;
+      color:white;
+      animation:fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn{
+      from{
+        transform:translateY(20px);
+        opacity:0;
+      }
+      to{
+        transform:translateY(0);
+        opacity:1;
+      }
+    }
+
+    .search-box{
+      display:flex;
+      gap:10px;
+      margin-bottom:25px;
+    }
+
+    .search-box input{
+      flex:1;
+      padding:12px;
+      border:none;
+      outline:none;
+      border-radius:12px;
+      font-size:16px;
+    }
+
+    .search-box button{
+      padding:12px 18px;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      background:#00c6ff;
+      color:white;
+      font-size:16px;
+      transition:0.3s;
+    }
+
+    .search-box button:hover{
+      background:#0072ff;
+      transform:scale(1.05);
+    }
+
+    .weather-icon{
+      width:120px;
+      margin:10px auto;
+    }
+
+    .temp{
+      font-size:60px;
+      font-weight:bold;
+    }
+
+    .city{
+      font-size:32px;
+      margin-top:5px;
+    }
+
+    .condition{
+      font-size:20px;
+      margin:10px 0;
+      opacity:0.9;
+    }
+
+    .details{
+      display:flex;
+      justify-content:space-between;
+      margin-top:25px;
+    }
+
+    .detail-box{
+      background:rgba(255,255,255,0.15);
+      padding:15px;
+      border-radius:15px;
+      width:45%;
+    }
+
+    .detail-box h4{
+      font-size:14px;
+      margin-bottom:8px;
+      opacity:0.8;
+    }
+
+    .detail-box p{
+      font-size:22px;
+      font-weight:bold;
+    }
+
+    .loading{
+      margin-top:15px;
+      display:none;
+      font-size:16px;
+      color:#eee;
+    }
+
+    .error{
+      margin-top:15px;
+      color:#ffb3b3;
+      display:none;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="weather-card">
+
+    <div class="search-box">
+      <input type="text" id="cityInput" placeholder="Enter city name">
+      <button onclick="getWeather()">Search</button>
+    </div>
+
+    <img src="https://cdn-icons-png.flaticon.com/512/1779/1779940.png"
+         class="weather-icon"
+         id="weatherIcon">
+
+    <div class="temp" id="temperature">--&deg;C</div>
+    <div class="city" id="cityName">Search City</div>
+    <div class="condition" id="condition">Weather Condition</div>
+
+    <div class="details">
+      <div class="detail-box">
+        <h4>Humidity</h4>
+        <p id="humidity">--%</p>
+      </div>
+
+      <div class="detail-box">
+        <h4>Wind</h4>
+        <p id="wind">-- km/h</p>
+      </div>
+    </div>
+
+    <div class="loading" id="loading">Loading weather...</div>
+    <div class="error" id="error"></div>
+
+  </div>
+
+  <script>
+    const apiKey = "f7081843534548409f891251261705";
+
+    async function getWeather(){
+
+      const city = document.getElementById("cityInput").value.trim();
+
+      const loading = document.getElementById("loading");
+      const error = document.getElementById("error");
+
+      loading.style.display = "block";
+      error.style.display = "none";
+      error.textContent = "";
+
+      if(!city){
+        error.textContent = "Please enter a city name.";
+        error.style.display = "block";
+        loading.style.display = "none";
+        return;
+      }
+
+      try{
+
+        const response = await fetch(
+          `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}`
+        );
+
+        if(!response.ok){
+          if(response.status === 401){
+            throw new Error("Invalid API key. Please check your WeatherAPI key.");
+          }
+
+          if(response.status === 400){
+            throw new Error("City not found. Please check the spelling.");
+          }
+
+          throw new Error("Unable to fetch weather right now.");
+        }
+
+        const data = await response.json();
+
+        document.getElementById("temperature").innerHTML =
+          Math.round(data.current.temp_c) + "&deg;C";
+
+        document.getElementById("cityName").innerHTML =
+          data.location.name;
+
+        document.getElementById("condition").innerHTML =
+          data.current.condition.text;
+
+        document.getElementById("humidity").innerHTML =
+          data.current.humidity + "%";
+
+        document.getElementById("wind").innerHTML =
+          data.current.wind_kph + " km/h";
+
+        const weatherMain = data.current.condition.text.toLowerCase();
+
+        const icon = document.getElementById("weatherIcon");
+
+        if(weatherMain.includes("cloud")){
+          icon.src = "https://cdn-icons-png.flaticon.com/512/414/414825.png";
+        }
+        else if(weatherMain.includes("rain")){
+          icon.src = "https://cdn-icons-png.flaticon.com/512/1163/1163657.png";
+        }
+        else if(weatherMain.includes("clear")){
+          icon.src = "https://cdn-icons-png.flaticon.com/512/869/869869.png";
+        }
+        else if(weatherMain.includes("snow")){
+          icon.src = "https://cdn-icons-png.flaticon.com/512/642/642102.png";
+        }
+        else{
+          icon.src = "https://cdn-icons-png.flaticon.com/512/1779/1779940.png";
+        }
+
+      }
+      catch(err){
+        error.textContent = err.message || "Something went wrong.";
+        error.style.display = "block";
+      }
+
+      loading.style.display = "none";
+    }
+
+  </script>
+
+  <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
+  <df-messenger
+    intent="WELCOME"
+    chat-title="Weather-Agent"
+    agent-id="8d62ba2b-bb5e-4c6c-b5a9-4e8727a4d3a6"
+    language-code="en"
+  ></df-messenger>
+
+</body>
+</html>
+
