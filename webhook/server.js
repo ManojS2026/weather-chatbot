@@ -28,10 +28,13 @@ function buildDialogflowReply(text) {
   };
 }
 
-async function fetchCurrentWeather(city) {
+async function fetchCurrentWeather(city = "auto:ip", includeAqi = false) {
   const url = new URL("https://api.weatherapi.com/v1/current.json");
   url.searchParams.set("key", weatherApiKey);
   url.searchParams.set("q", city);
+  if (includeAqi) {
+    url.searchParams.set("aqi", "yes");
+  }
 
   const apiResponse = await fetch(url);
 
@@ -42,49 +45,95 @@ async function fetchCurrentWeather(city) {
   return apiResponse.json();
 }
 
-function createFormattedWeatherReply(weather) {
-  const cityName = weather.location.name;
-  const temperature = Math.round(weather.current.temp_c);
-  const humidity = weather.current.humidity;
-  const windKph = weather.current.wind_kph;
-  const windMs = (windKph / 3.6).toFixed(1);
-  const condition = weather.current.condition.text;
+async function fetchForecast(city = "auto:ip", days = 1, includeAqi = false) {
+  const url = new URL("https://api.weatherapi.com/v1/forecast.json");
+  url.searchParams.set("key", weatherApiKey);
+  url.searchParams.set("q", city);
+  url.searchParams.set("days", String(days));
+  if (includeAqi) {
+    url.searchParams.set("aqi", "yes");
+  }
 
-  return `🌤️ Weather in ${cityName}
+  const apiResponse = await fetch(url);
 
-🌡️ Temperature: ${temperature}°C
-☁️ Condition: ${condition}
-💧 Humidity: ${humidity}%
-🌬️ Wind Speed: ${windMs} m/s`;
+  if (!apiResponse.ok) {
+    throw new Error(`Weather API returned ${apiResponse.status}`);
+  }
+
+  return apiResponse.json();
 }
 
-function createWeatherReply(intentName, weather, queryText = "") {
+function createFormattedWeatherReply(weather, label = "Current weather") {
   const cityName = weather.location.name;
   const temperature = Math.round(weather.current.temp_c);
-  const humidity = weather.current.humidity;
-  const windKph = weather.current.wind_kph;
-  const normalizedQuery = queryText.toLowerCase();
-  const askedForGeneralWeather =
-    normalizedQuery.includes("weather") &&
-    !normalizedQuery.includes("temperature") &&
-    !normalizedQuery.includes("humidity") &&
-    !normalizedQuery.includes("wind");
+  const condition = weather.current.condition.text;
 
-  switch (intentName) {
-    case "GetTemperature":
-      if (askedForGeneralWeather) {
-        return createFormattedWeatherReply(weather);
-      }
-      return `The current temperature in ${cityName} is ${temperature}°C.`;
-    case "GetHumidity":
-      return `The current humidity in ${cityName} is ${humidity}%.`;
-    case "GetWind":
-      return `The current wind speed in ${cityName} is ${windKph} km/h.`;
-    case "GetCurrentWeather":
-      return createFormattedWeatherReply(weather);
-    default:
-      return createFormattedWeatherReply(weather);
+  return `🌤️ ${label} in ${cityName} is ${temperature}°C with ${condition}.`;
+}
+
+function createWeeklyForecastReply(forecast) {
+  const cityName = forecast.location.name;
+  const days = forecast.forecast.forecastday;
+  const avgMax = Math.round(
+    days.reduce((sum, day) => sum + day.day.maxtemp_c, 0) / days.length
+  );
+  const avgMin = Math.round(
+    days.reduce((sum, day) => sum + day.day.mintemp_c, 0) / days.length
+  );
+  const rainiestDay = days.reduce((best, day) =>
+    day.day.daily_chance_of_rain > best.day.daily_chance_of_rain ? day : best
+  );
+  const rainDate = new Date(`${rainiestDay.date}T00:00:00`);
+  const rainDayName = rainDate.toLocaleDateString("en-US", { weekday: "long" });
+
+  return `📅 The upcoming week in ${cityName} will have temperatures around ${avgMin}–${avgMax}°C, with the highest rain chance on ${rainDayName}.`;
+}
+
+function createRainReply(forecast) {
+  const cityName = forecast.location.name;
+  const today = forecast.forecast.forecastday[0].day;
+  const chance = today.daily_chance_of_rain;
+
+  if (chance >= 60) {
+    return `🌧️ Yes, there is a high chance of rain today in ${cityName} (${chance}%). Carry an umbrella.`;
   }
+
+  if (chance >= 30) {
+    return `🌦️ There is a moderate chance of rain today in ${cityName} (${chance}%).`;
+  }
+
+  return `☀️ Rain is unlikely today in ${cityName} (${chance}% chance).`;
+}
+
+function getAqiLabel(usEpaIndex) {
+  switch (usEpaIndex) {
+    case 1:
+      return "Good";
+    case 2:
+      return "Moderate";
+    case 3:
+      return "Unhealthy for sensitive groups";
+    case 4:
+      return "Unhealthy";
+    case 5:
+      return "Very unhealthy";
+    case 6:
+      return "Hazardous";
+    default:
+      return "Unavailable";
+  }
+}
+
+function createAqiReply(weather) {
+  const cityName = weather.location.name;
+  const aqi = weather.current.air_quality?.["us-epa-index"];
+  const label = getAqiLabel(aqi);
+
+  if (!aqi) {
+    return `🌫️ AQI data is unavailable for ${cityName} right now.`;
+  }
+
+  return `🌫️ AQI in ${cityName} is ${label} (AQI index: ${aqi}).`;
 }
 
 async function handleWebhook(request, response) {
@@ -108,20 +157,55 @@ async function handleWebhook(request, response) {
       const payload = JSON.parse(body || "{}");
       const intentName = payload.queryResult?.intent?.displayName;
       const queryText = payload.queryResult?.queryText || "";
+      const normalizedQuery = queryText.toLowerCase();
       const parameters = payload.queryResult?.parameters || {};
       const city = getCity(parameters);
+      const cityOrAutoIp = city || "auto:ip";
 
-      if (!city) {
-        sendJson(
-          response,
-          200,
-          buildDialogflowReply("Which city do you want the weather for?")
-        );
-        return;
+      let reply;
+
+      if (
+        normalizedQuery.includes("aqi") ||
+        normalizedQuery.includes("air quality") ||
+        normalizedQuery.includes("pollution")
+      ) {
+        const weather = await fetchCurrentWeather(cityOrAutoIp, true);
+        reply = createAqiReply(weather);
+      } else switch (intentName) {
+        case "current.weather": {
+          const weather = await fetchCurrentWeather(cityOrAutoIp);
+          reply = createFormattedWeatherReply(weather);
+          break;
+        }
+        case "city.weather": {
+          if (!city) {
+            reply = "Which city do you want the weather for?";
+            break;
+          }
+          const weather = await fetchCurrentWeather(city);
+          reply = createFormattedWeatherReply(weather, "Weather");
+          break;
+        }
+        case "weekly.forecast": {
+          const forecast = await fetchForecast(cityOrAutoIp, 7);
+          reply = createWeeklyForecastReply(forecast);
+          break;
+        }
+        case "rain.check": {
+          const forecast = await fetchForecast(cityOrAutoIp, 1);
+          reply = createRainReply(forecast);
+          break;
+        }
+        case "aqi.check": {
+          const weather = await fetchCurrentWeather(cityOrAutoIp, true);
+          reply = createAqiReply(weather);
+          break;
+        }
+        default: {
+          const weather = await fetchCurrentWeather(cityOrAutoIp);
+          reply = createFormattedWeatherReply(weather);
+        }
       }
-
-      const weather = await fetchCurrentWeather(city);
-      const reply = createWeatherReply(intentName, weather, queryText);
 
       sendJson(response, 200, buildDialogflowReply(reply));
     } catch (error) {

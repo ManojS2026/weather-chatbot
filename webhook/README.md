@@ -4,30 +4,22 @@ This small Node.js service lets Dialogflow return live weather values from Weath
 
 ## Supported intent names
 
-- `GetTemperature`
-- `GetHumidity`
-- `GetWind`
-- `GetCurrentWeather`
+- `current.weather`
+- `city.weather`
+- `weekly.forecast`
+- `rain.check`
+- `aqi.check`
 
-Each intent should send a city parameter named `city`.
+Use a city parameter named `city` for `city.weather`, and optionally for the other intents if you want city-specific answers. If no city is sent, the webhook uses `auto:ip`.
 
-If Dialogflow sends a different intent name, the webhook now falls back to the full formatted weather summary instead of a plain temperature-only sentence.
-
-For a chat message such as:
-
-```text
-weather in Bangalore
-```
-
-use the `GetCurrentWeather` intent. It now returns a formatted live response like:
+### Example responses
 
 ```text
-🌤️ Weather in Bangalore
-
-🌡️ Temperature: 28°C
-☁️ Condition: scattered clouds
-💧 Humidity: 62%
-🌬️ Wind Speed: 3.2 m/s
+🌤️ Current weather in Bangalore is 28°C with scattered clouds.
+🌦️ Weather in Mysore is 26°C with light rain.
+📅 The upcoming week in Bangalore will have temperatures around 22–29°C, with the highest rain chance on Friday.
+🌧️ Yes, there is a high chance of rain today in Bangalore (78%). Carry an umbrella.
+🌫️ AQI in Bangalore is Moderate (AQI index: 2).
 ```
 
 ## Local setup
