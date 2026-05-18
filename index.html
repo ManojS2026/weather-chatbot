@@ -14,12 +14,21 @@
     }
 
     body{
-      height:100vh;
+      min-height:100vh;
       display:flex;
       justify-content:center;
       align-items:center;
       background: linear-gradient(135deg,#1d2671,#c33764);
-      overflow:hidden;
+      padding:24px;
+    }
+
+    .app-layout{
+      display:flex;
+      gap:24px;
+      align-items:stretch;
+      justify-content:center;
+      flex-wrap:wrap;
+      width:min(1120px, 100%);
     }
 
     .weather-card{
@@ -32,6 +41,146 @@
       text-align:center;
       color:white;
       animation:fadeIn 1s ease;
+    }
+
+    .daily-card{
+      flex:1;
+      min-width:420px;
+      max-width:720px;
+      padding:28px;
+      border-radius:25px;
+      background: rgba(18,22,35,0.82);
+      backdrop-filter: blur(12px);
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);
+      color:white;
+      animation:fadeIn 1s ease;
+    }
+
+    .daily-top{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:flex-start;
+      margin-bottom:24px;
+    }
+
+    .location-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .location-name{
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .location-button{
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.08);
+      color:#cfe1ff;
+      border-radius:999px;
+      padding:9px 14px;
+      cursor:pointer;
+      transition:0.25s;
+    }
+
+    .location-button:hover{
+      background:rgba(255,255,255,0.16);
+    }
+
+    .daily-main{
+      display:flex;
+      gap:18px;
+      align-items:center;
+      margin-top:18px;
+    }
+
+    .daily-icon{
+      width:72px;
+      height:72px;
+    }
+
+    .daily-temp{
+      font-size:54px;
+      line-height:1;
+      font-weight:500;
+    }
+
+    .daily-meta{
+      color:rgba(255,255,255,0.72);
+      line-height:1.6;
+      font-size:14px;
+    }
+
+    .daily-summary{
+      text-align:right;
+    }
+
+    .daily-summary h2{
+      font-size:26px;
+      margin-bottom:4px;
+    }
+
+    .daily-summary p{
+      color:rgba(255,255,255,0.72);
+      line-height:1.5;
+    }
+
+    .hourly-list{
+      display:grid;
+      grid-template-columns:repeat(6, minmax(80px, 1fr));
+      gap:12px;
+      margin-top:24px;
+    }
+
+    .hour-card{
+      background:rgba(255,255,255,0.08);
+      border-radius:18px;
+      padding:14px 10px;
+      text-align:center;
+    }
+
+    .hour-card img{
+      width:42px;
+      height:42px;
+      margin:8px auto;
+      display:block;
+    }
+
+    .hour-time{
+      color:rgba(255,255,255,0.72);
+      font-size:13px;
+    }
+
+    .hour-temp{
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .daily-status{
+      margin-top:16px;
+      color:rgba(255,255,255,0.72);
+      min-height:20px;
+    }
+
+    @media (max-width:760px){
+      .daily-card{
+        min-width:100%;
+      }
+
+      .daily-top{
+        flex-direction:column;
+      }
+
+      .daily-summary{
+        text-align:left;
+      }
+
+      .hourly-list{
+        grid-template-columns:repeat(3, minmax(80px, 1fr));
+      }
     }
 
     @keyframes fadeIn{
@@ -49,6 +198,23 @@
       display:flex;
       gap:10px;
       margin-bottom:25px;
+    }
+
+    .use-location-button{
+      width:100%;
+      margin-bottom:18px;
+      padding:12px;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      background:rgba(255,255,255,0.16);
+      color:white;
+      font-size:15px;
+      transition:0.3s;
+    }
+
+    .use-location-button:hover{
+      background:rgba(255,255,255,0.24);
     }
 
     .search-box input{
@@ -139,12 +305,54 @@
 
 <body>
 
+  <main class="app-layout">
+  <section class="daily-card">
+    <div class="daily-top">
+      <div>
+        <div class="location-row">
+          <div class="location-name" id="currentLocationName">Detecting your location...</div>
+          <button class="location-button" onclick="loadPreciseLocationWeather()">
+            Use precise location
+          </button>
+        </div>
+
+        <div class="daily-main">
+          <img
+            class="daily-icon"
+            id="dailyWeatherIcon"
+            src="https://cdn.weatherapi.com/weather/64x64/day/116.png"
+            alt="Weather icon"
+          >
+          <div class="daily-temp" id="dailyTemperature">--&deg;</div>
+          <div class="daily-meta">
+            <div>Precipitation: <span id="dailyPrecipitation">--%</span></div>
+            <div>Humidity: <span id="dailyHumidity">--%</span></div>
+            <div>Wind: <span id="dailyWind">-- km/h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="daily-summary">
+        <h2>Weather</h2>
+        <p id="dailyDateTime">--</p>
+        <p id="dailyCondition">--</p>
+      </div>
+    </div>
+
+    <div class="hourly-list" id="hourlyList"></div>
+    <div class="daily-status" id="dailyStatus"></div>
+  </section>
+
   <div class="weather-card">
 
     <div class="search-box">
       <input type="text" id="cityInput" placeholder="Enter city name">
       <button onclick="getWeather()">Search</button>
     </div>
+
+    <button class="use-location-button" onclick="useMyLocationForSearchCard()">
+      Use my location
+    </button>
 
     <img src="https://cdn-icons-png.flaticon.com/512/1779/1779940.png"
          class="weather-icon"
@@ -170,14 +378,33 @@
     <div class="error" id="error"></div>
 
   </div>
+  </main>
 
   <script>
     const apiKey = "f7081843534548409f891251261705";
+    function formatWeatherChatReply(data, displayName = ""){
+      const city = displayName || data.location.name;
+      const windSpeedMs = (data.current.wind_kph / 3.6).toFixed(1);
 
-    async function getWeather(){
+      return `🌤️ Weather in ${city}
 
-      const city = document.getElementById("cityInput").value.trim();
+🌡️ Temperature: ${Math.round(data.current.temp_c)}°C
+☁️ Condition: ${data.current.condition.text}
+💧 Humidity: ${data.current.humidity}%
+🌬️ Wind Speed: ${windSpeedMs} m/s`;
+    }
 
+    function sendWeatherReplyToChatbot(data, displayName = ""){
+      const dfMessenger = document.querySelector("df-messenger");
+
+      if(!dfMessenger || typeof dfMessenger.renderCustomText !== "function"){
+        return;
+      }
+
+      dfMessenger.renderCustomText(formatWeatherChatReply(data, displayName));
+    }
+
+    async function loadWeatherForQuery(query, displayName = ""){
       const loading = document.getElementById("loading");
       const error = document.getElementById("error");
 
@@ -185,7 +412,7 @@
       error.style.display = "none";
       error.textContent = "";
 
-      if(!city){
+      if(!query){
         error.textContent = "Please enter a city name.";
         error.style.display = "block";
         loading.style.display = "none";
@@ -195,7 +422,7 @@
       try{
 
         const response = await fetch(
-          `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}`
+          `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(query)}`
         );
 
         if(!response.ok){
@@ -216,7 +443,7 @@
           Math.round(data.current.temp_c) + "&deg;C";
 
         document.getElementById("cityName").innerHTML =
-          data.location.name;
+          displayName || data.location.name;
 
         document.getElementById("condition").innerHTML =
           data.current.condition.text;
@@ -247,6 +474,8 @@
           icon.src = "https://cdn-icons-png.flaticon.com/512/1779/1779940.png";
         }
 
+        sendWeatherReplyToChatbot(data, displayName);
+
       }
       catch(err){
         error.textContent = err.message || "Something went wrong.";
@@ -255,6 +484,177 @@
 
       loading.style.display = "none";
     }
+
+    async function getWeather(){
+      const city = document.getElementById("cityInput").value.trim();
+      await loadWeatherForQuery(city);
+    }
+
+    async function fetchForecast(query){
+      const response = await fetch(
+        `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${encodeURIComponent(query)}&days=1`
+      );
+
+      if(!response.ok){
+        throw new Error("Unable to fetch daily weather right now.");
+      }
+
+      return response.json();
+    }
+
+    function formatLocalDateTime(localtime){
+      const date = new Date(localtime.replace(" ", "T"));
+      return date.toLocaleString("en-US", {
+        weekday:"long",
+        hour:"numeric",
+        minute:"2-digit",
+      });
+    }
+
+    function renderDailyWeather(data){
+      const current = data.current;
+      const location = data.location;
+      const todayHours = data.forecast.forecastday[0].hour;
+      const currentHour = new Date(location.localtime.replace(" ", "T")).getHours();
+      const nextHours = todayHours
+        .filter((hour) => new Date(hour.time.replace(" ", "T")).getHours() >= currentHour)
+        .slice(0, 6);
+
+      document.getElementById("currentLocationName").textContent =
+        `${location.name}, ${location.region || location.country}`;
+      document.getElementById("dailyTemperature").textContent =
+        `${Math.round(current.temp_c)}\u00B0`;
+      document.getElementById("dailyPrecipitation").textContent =
+        `${todayHours[currentHour]?.chance_of_rain ?? 0}%`;
+      document.getElementById("dailyHumidity").textContent =
+        `${current.humidity}%`;
+      document.getElementById("dailyWind").textContent =
+        `${current.wind_kph} km/h`;
+      document.getElementById("dailyDateTime").textContent =
+        formatLocalDateTime(location.localtime);
+      document.getElementById("dailyCondition").textContent =
+        current.condition.text;
+      document.getElementById("dailyWeatherIcon").src =
+        `https:${current.condition.icon}`;
+
+      const hourlyList = document.getElementById("hourlyList");
+      hourlyList.innerHTML = "";
+
+      nextHours.forEach((hour) => {
+        const card = document.createElement("div");
+        card.className = "hour-card";
+        const date = new Date(hour.time.replace(" ", "T"));
+
+        card.innerHTML = `
+          <div class="hour-time">${date.toLocaleTimeString("en-US", {
+            hour:"numeric"
+          })}</div>
+          <img src="https:${hour.condition.icon}" alt="${hour.condition.text}">
+          <div class="hour-temp">${Math.round(hour.temp_c)}\u00B0</div>
+        `;
+
+        hourlyList.appendChild(card);
+      });
+    }
+
+    async function loadCurrentLocationWeather(){
+      const status = document.getElementById("dailyStatus");
+      status.textContent = "Loading current location weather...";
+
+      try{
+        const data = await fetchForecast("auto:ip");
+        renderDailyWeather(data);
+        status.textContent = "";
+      }
+      catch(error){
+        status.textContent =
+          "Could not detect location automatically. Click \"Use precise location\".";
+      }
+    }
+
+    function loadPreciseLocationWeather(){
+      const status = document.getElementById("dailyStatus");
+
+      if(!navigator.geolocation){
+        status.textContent = "Precise location is not supported in this browser.";
+        return;
+      }
+
+      status.textContent = "Requesting precise location...";
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try{
+            const { latitude, longitude } = position.coords;
+            const data = await fetchForecast(`${latitude},${longitude}`);
+            renderDailyWeather(data);
+            status.textContent = "";
+          }
+          catch(error){
+            status.textContent = error.message;
+          }
+        },
+        (error) => {
+          if(error.code === error.PERMISSION_DENIED){
+            status.textContent = "Location permission was denied.";
+          }
+          else if(error.code === error.POSITION_UNAVAILABLE){
+            status.textContent = "Location information is unavailable.";
+          }
+          else if(error.code === error.TIMEOUT){
+            status.textContent = "Location request timed out. Please try again.";
+          }
+          else{
+            status.textContent = "Unable to get your precise location.";
+          }
+        },
+        {
+          enableHighAccuracy:true,
+          timeout:10000,
+          maximumAge:0
+        }
+      );
+    }
+
+    function useMyLocationForSearchCard(){
+      const error = document.getElementById("error");
+
+      if(!navigator.geolocation){
+        error.textContent = "Location is not supported in this browser.";
+        error.style.display = "block";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          await loadWeatherForQuery(`${latitude},${longitude}`, "My Location");
+        },
+        (locationError) => {
+          if(locationError.code === locationError.PERMISSION_DENIED){
+            error.textContent = "Location permission was denied.";
+          }
+          else if(locationError.code === locationError.POSITION_UNAVAILABLE){
+            error.textContent = "Location information is unavailable.";
+          }
+          else if(locationError.code === locationError.TIMEOUT){
+            error.textContent = "Location request timed out. Please try again.";
+          }
+          else{
+            error.textContent = "Unable to get your current location.";
+          }
+
+          error.style.display = "block";
+        },
+        {
+          enableHighAccuracy:true,
+          timeout:10000,
+          maximumAge:0
+        }
+      );
+    }
+
+    loadCurrentLocationWeather();
 
   </script>
 

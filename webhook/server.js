@@ -42,24 +42,48 @@ async function fetchCurrentWeather(city) {
   return apiResponse.json();
 }
 
-function createWeatherReply(intentName, weather) {
+function createFormattedWeatherReply(weather) {
   const cityName = weather.location.name;
-  const temperature = weather.current.temp_c;
+  const temperature = Math.round(weather.current.temp_c);
   const humidity = weather.current.humidity;
-  const wind = weather.current.wind_kph;
+  const windKph = weather.current.wind_kph;
+  const windMs = (windKph / 3.6).toFixed(1);
   const condition = weather.current.condition.text;
+
+  return `🌤️ Weather in ${cityName}
+
+🌡️ Temperature: ${temperature}°C
+☁️ Condition: ${condition}
+💧 Humidity: ${humidity}%
+🌬️ Wind Speed: ${windMs} m/s`;
+}
+
+function createWeatherReply(intentName, weather, queryText = "") {
+  const cityName = weather.location.name;
+  const temperature = Math.round(weather.current.temp_c);
+  const humidity = weather.current.humidity;
+  const windKph = weather.current.wind_kph;
+  const normalizedQuery = queryText.toLowerCase();
+  const askedForGeneralWeather =
+    normalizedQuery.includes("weather") &&
+    !normalizedQuery.includes("temperature") &&
+    !normalizedQuery.includes("humidity") &&
+    !normalizedQuery.includes("wind");
 
   switch (intentName) {
     case "GetTemperature":
+      if (askedForGeneralWeather) {
+        return createFormattedWeatherReply(weather);
+      }
       return `The current temperature in ${cityName} is ${temperature}°C.`;
     case "GetHumidity":
       return `The current humidity in ${cityName} is ${humidity}%.`;
     case "GetWind":
-      return `The current wind speed in ${cityName} is ${wind} km/h.`;
+      return `The current wind speed in ${cityName} is ${windKph} km/h.`;
     case "GetCurrentWeather":
-      return `The current weather in ${cityName} is ${condition}, ${temperature}°C, with ${humidity}% humidity and wind at ${wind} km/h.`;
+      return createFormattedWeatherReply(weather);
     default:
-      return `The current temperature in ${cityName} is ${temperature}°C.`;
+      return createFormattedWeatherReply(weather);
   }
 }
 
@@ -83,6 +107,7 @@ async function handleWebhook(request, response) {
     try {
       const payload = JSON.parse(body || "{}");
       const intentName = payload.queryResult?.intent?.displayName;
+      const queryText = payload.queryResult?.queryText || "";
       const parameters = payload.queryResult?.parameters || {};
       const city = getCity(parameters);
 
@@ -96,7 +121,7 @@ async function handleWebhook(request, response) {
       }
 
       const weather = await fetchCurrentWeather(city);
-      const reply = createWeatherReply(intentName, weather);
+      const reply = createWeatherReply(intentName, weather, queryText);
 
       sendJson(response, 200, buildDialogflowReply(reply));
     } catch (error) {
