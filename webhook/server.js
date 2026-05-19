@@ -28,6 +28,13 @@ function buildDialogflowReply(text) {
   };
 }
 
+function isGreetingQuery(text = "") {
+  const normalized = text.toLowerCase();
+  return ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "greetings"].some(
+    (phrase) => normalized.includes(phrase)
+  );
+}
+
 async function fetchCurrentWeather(city = "auto:ip", includeAqi = false) {
   const url = new URL("https://api.weatherapi.com/v1/current.json");
   url.searchParams.set("key", weatherApiKey);
@@ -161,10 +168,14 @@ async function handleWebhook(request, response) {
       const parameters = payload.queryResult?.parameters || {};
       const city = getCity(parameters);
       const cityOrAutoIp = city || "auto:ip";
+      const isGreeting = isGreetingQuery(queryText);
 
       let reply;
 
-      if (
+      if (isGreeting || intentName === "WELCOME" || intentName === "Default Welcome Intent") {
+        reply =
+          "Hello! I can help with weather, forecasts, rain chances, or air quality. Try asking something like 'What's the weather today?'";
+      } else if (
         normalizedQuery.includes("aqi") ||
         normalizedQuery.includes("air quality") ||
         normalizedQuery.includes("pollution")
@@ -202,8 +213,13 @@ async function handleWebhook(request, response) {
           break;
         }
         default: {
-          const weather = await fetchCurrentWeather(cityOrAutoIp);
-          reply = createFormattedWeatherReply(weather);
+          if (isGreeting) {
+            reply =
+              "Hello! I can help with weather, forecasts, rain chances, or air quality. Try asking something like 'What's the weather today?'";
+          } else {
+            reply =
+              "Sorry, I didn't understand that. Ask me about weather, forecast, rain, or air quality.";
+          }
         }
       }
 
